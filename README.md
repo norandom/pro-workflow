@@ -360,6 +360,47 @@ npx skillkit translate pro-workflow --agent gemini-cli
 
 Supported: Claude Code, Cursor, Codex CLI, Gemini CLI, Windsurf, OpenCode, Kiro, Amp, Goose, Roo, and 27 more.
 
+### OpenCode native plugin
+
+OpenCode has first-class native support via a plugin module. Unlike SkillKit translation, this provides direct event hooks and custom tools with no fidelity loss.
+
+**Install:**
+
+```bash
+npm install pro-workflow
+npx pro-workflow setup-opencode ~/.config/opencode symlink
+```
+
+Then add to `~/.config/opencode/opencode.json`:
+
+```jsonc
+{
+  "plugin": [
+    "<path-to-pro-workflow>/dist/opencode-plugin/index.mjs"
+  ],
+  "instructions": [
+    "~/.config/opencode/AGENTS.md"
+  ]
+}
+```
+
+**What you get:**
+
+| Feature | How it works |
+|---------|--------------|
+| **34 skills** | Symlinked to `~/.config/opencode/skills/` -- loaded natively by OpenCode's skill system |
+| **8 agents** | Converted to OpenCode format with `permission{}` objects and `mode` assignments |
+| **22 commands** | Available as `/wiki`, `/learn`, `/sprint-status`, etc. |
+| **11 rules** | Merged into `~/.config/opencode/AGENTS.md` -- applied to every session |
+| **7 event hooks** | `tool.execute.before/after`, `session.created/idle`, `file.edited`, `permission.ask`, `session.compacted` |
+| **3 custom tools** | `pw-search` (FTS5 + embedding), `pw-learn` (persist corrections), `pw-wiki-query` (wiki search) |
+
+**Custom tools** are registered via OpenCode's native `tool()` helper -- no MCP server needed. They query the same `~/.pro-workflow/data.db` SQLite store as Claude Code and Cursor.
+
+**Event hooks** map to the existing 37 hook scripts. `tool.execute.before` runs quality gates (read-before-write, secret scan, tool-call budget). `tool.execute.after` captures `[LEARN]` blocks and runs drift detection. `session.created` loads previous learnings into context.
+
+See [`docs/opencode-integration.md`](docs/opencode-integration.md) for the full setup guide and [`docs/feature-parity.md`](docs/feature-parity.md) for the Claude Code / Cursor / OpenCode comparison matrix.
+
 ---
 
 ## Configuration
