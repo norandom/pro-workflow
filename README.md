@@ -16,7 +16,7 @@
   Self-correcting memory + persistent FTS5-indexed wikis + auto-research loop, all on one SQLite store.<br/>
   Correct Claude once &mdash; it never repeats the mistake. Build a wiki on a topic &mdash; it grows itself overnight.<br/>
   <b>34 skills</b> &bull; <b>8 agents</b> &bull; <b>22 commands</b> &bull; <b>37 hook scripts across 24 events</b><br/>
-  Works with <b>Claude Code</b>, <b>Cursor</b>, and <b>32+ agents</b> via SkillKit.
+   Works with <b>Claude Code</b>, <b>Cursor</b>, <b>OpenCode</b>, and <b>32+ agents</b> via SkillKit.
 </p>
 
 ---
@@ -67,6 +67,10 @@ Session 50: Correction rate near zero. Wiki has 200 cited claims.
 ```bash
 # Cursor
 /add-plugin pro-workflow
+
+# OpenCode
+npm install pro-workflow
+npx pro-workflow setup-opencode
 
 # Any agent via SkillKit
 npx skillkit install pro-workflow

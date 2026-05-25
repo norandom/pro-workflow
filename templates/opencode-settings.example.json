@@ -1,0 +1,48 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "model": "{env:OPENCODE_MODEL}",
+  "small_model": "anthropic/claude-haiku-4",
+  "provider": {
+    "anthropic": {
+      "name": "Anthropic",
+      "npm": "@ai-sdk/anthropic",
+      "options": {
+        "apiKey": "{env:ANTHROPIC_API_KEY}"
+      },
+      "models": {
+        "claude-opus-4": {
+          "name": "claude-opus-4-20250514",
+          "options": {
+            "reasoning": {
+              "effort": "high"
+            }
+          }
+        },
+        "claude-sonnet-4": {
+          "name": "claude-sonnet-4-20250514",
+          "options": {}
+        },
+        "claude-haiku-4": {
+          "name": "claude-haiku-4-20250514",
+          "options": {}
+        }
+      }
+    }
+  },
+  "permission": {
+    "edit": "ask",
+    "bash": {
+      "*": "ask",
+      "git status": "allow",
+      "git diff*": "allow",
+      "git log*": "allow",
+      "npm test*": "allow",
+      "npm run lint*": "allow",
+      "npm run typecheck*": "allow"
+    }
+  },
+  "formatter": {
+    "command": ["npx", "prettier", "--write"],
+    "globs": ["**/*.{ts,tsx,js,jsx,json,md}"]
+  }
+}

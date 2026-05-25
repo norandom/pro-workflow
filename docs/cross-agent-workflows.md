@@ -1,6 +1,6 @@
 # Cross-Agent Workflows
 
-How to use pro-workflow patterns across Claude Code, Cursor, Codex, and other AI coding agents.
+How to use pro-workflow patterns across Claude Code, Cursor, OpenCode, and other AI coding agents.
 
 ## The Layered Approach
 
@@ -9,7 +9,7 @@ The most productive teams in 2026 don't choose one tool — they layer them:
 | Layer | Tool | Strength |
 |-------|------|----------|
 | Editor | Cursor / VS Code + Copilot | Tab completions, inline edits, visual diffs |
-| Terminal | Claude Code / Codex CLI | Deep reasoning, multi-file changes, CI/CD |
+| Terminal | Claude Code / OpenCode / Codex CLI | Deep reasoning, multi-file changes, CI/CD |
 | Background | Cursor Background Agents | Long-running tasks, PR creation |
 | Review | Claude Code reviewer agent | Security audit, code quality |
 
@@ -17,13 +17,25 @@ The most productive teams in 2026 don't choose one tool — they layer them:
 
 ```text
 Cursor for daily coding (tab completions, inline edits)
-  └── Claude Code in Cursor's terminal (hard problems, refactors)
-      └── Subagents for parallel exploration
+  ├── Claude Code / OpenCode in terminal (hard problems, refactors)
+  └── Subagents for parallel exploration
 ```
 
 The overlap in capabilities is worth the combined cost.
 
 ## Configuration Mapping
+
+### Claude Code → OpenCode
+
+| Claude Code | OpenCode Equivalent |
+|-------------|---------------------|
+| `CLAUDE.md` | `AGENTS.md` + `opencode.json` `instructions` array |
+| `settings.json` | `opencode.json` |
+| `hooks/hooks.json` | Plugin events (`tool.execute.before`, `tool.execute.after`, etc.) |
+| `skills/` | `.opencode/skills/` (format identical) |
+| `agents/` | `.opencode/agents/` (frontmatter converted) |
+| `commands/` | `.opencode/commands/` (agent field added) |
+| `rules/*.mdc` | `.opencode/AGENTS.md` (merged) |
 
 ### Claude Code → Cursor
 
@@ -106,6 +118,7 @@ When corrected, propose a rule. After approval, append to LEARNED section.
 Universal pattern. Every agent benefits from planning mode:
 - Claude Code: `Shift+Tab` to plan mode
 - Cursor: Agent mode with planning prompt
+- OpenCode: Build agent with planning command
 - Codex: Start with "plan this before implementing"
 
 ### 3. Quality Gates Before Commit
@@ -145,14 +158,28 @@ Background agents run on isolated VMs. They can:
 - Record video of their work
 - Run indefinitely
 
+### OpenCode
+OpenCode uses subagents for background-like tasks. Configure in `opencode.json`:
+```json
+{
+  "agent": {
+    "scout": {
+      "description": "Explore the codebase for context",
+      "mode": "subagent",
+      "hidden": true
+    }
+  }
+}
+```
+
 ### When to Use Each
 
-| Task | Claude Code | Cursor |
-|------|-------------|--------|
-| Quick exploration | Subagent (in-process) | Tab in sidebar |
-| Long refactor | Worktree session | Background agent |
-| PR creation | `gh pr create` in session | Background agent auto-PR |
-| Code review | Reviewer agent | Inline review comments |
+| Task | Claude Code | Cursor | OpenCode |
+|------|-------------|--------|----------|
+| Quick exploration | Subagent (in-process) | Tab in sidebar | Subagent (explore) |
+| Long refactor | Worktree session | Background agent | Main session with plan agent |
+| PR creation | `gh pr create` in session | Background agent auto-PR | `gh pr create` in session |
+| Code review | Reviewer agent | Inline review comments | Reviewer agent |
 
 ## MCP Server Sharing
 
