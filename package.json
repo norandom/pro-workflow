@@ -9,7 +9,7 @@
     "clean": "rm -rf dist",
     "prepublishOnly": "npm run build",
     "db:init": "node dist/db/index.js",
-    "setup-opencode": "node dist/scripts/setup-opencode.js"
+    "setup-opencode": "node scripts/setup-opencode.js"
   },
   "keywords": [
     "claude-code",
