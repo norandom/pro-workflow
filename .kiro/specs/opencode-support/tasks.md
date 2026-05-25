@@ -10,7 +10,7 @@
     - Verify `tsconfig.json` includes new source directory
     - Observable: `npm install` resolves new dependencies without errors
     - _Requirements: 10.1, 12.1, 13.2_
-  - 1.2 Create plugin entry point exporting Plugin function
+  - [x] 1.2 Create plugin entry point exporting Plugin function
     - Implement async function receiving `{ project, client, $, directory, worktree }`
     - Return object mapping 9 OpenCode event names to handler functions
     - Implement lazy initialization of SQLite store connection on first use
