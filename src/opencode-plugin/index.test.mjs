@@ -19,7 +19,7 @@ function mockPluginInput() {
   return {
     project: { id: "test-project" },
     client: { app: { log: () => {} } },
-    $: async () => String(""),
+    $: async () => ({ stdout: "", stderr: "", exitCode: 0 }),
     directory: "/tmp",
     worktree: "/tmp",
     experimental_workspace: { register: () => {} },
