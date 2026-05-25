@@ -1,0 +1,258 @@
+# Tasks: OpenCode Support
+
+## Foundation
+
+- [ ] 1. Plugin infrastructure and entry point
+  - [x] 1.1 Update package.json with dependencies and build configuration
+    - Add `@opencode-ai/plugin` and `zod` to dependencies
+    - Add `dist/opencode-plugin` to `files` array
+    - Add `setup-opencode` npm script
+    - Verify `tsconfig.json` includes new source directory
+    - Observable: `npm install` resolves new dependencies without errors
+    - _Requirements: 10.1, 12.1, 13.2_
+  - 1.2 Create plugin entry point exporting Plugin function
+    - Implement async function receiving `{ project, client, $, directory, worktree }`
+    - Return object mapping 9 OpenCode event names to handler functions
+    - Implement lazy initialization of SQLite store connection on first use
+    - Observable: Plugin compiles with `tsc` and exports valid `Plugin` type
+    - _Requirements: 1.1, 11.1, 12.2_
+  - 1.3 Create event handler stubs for mapped OpenCode events
+    - Implement handlers for: tool.execute.before, tool.execute.after, session.created, session.idle, file.edited, session.compacted, permission.asked, todo.updated, shell.env
+    - Each handler catches exceptions and logs via `client.app.log()`
+    - Handlers never throw to caller (fire-and-forget)
+    - Observable: All 9 handlers are callable without runtime errors
+    - _Requirements: 6.1_
+
+- [ ] 2. Custom tools with Zod schemas
+  - 2.1 Implement pw-search tool with FTS5 and embedding support
+    - Define Zod schema with query (string), category (optional string), limit (optional number, default 10)
+    - Connect to SQLite store via `getStore()`
+    - Execute `searchLearnings()` for full-text search
+    - Fall back to embedding-based search when vector index available
+    - Return formatted markdown table of results
+    - Observable: `pw-search("test query")` returns results from test database within 200ms
+    - _Requirements: 9.1, 9.2, 9.3, 11.2_
+    - _Boundary: PluginTools_
+  - 2.2 Implement pw-learn and pw-wiki-query tools
+    - `pw-learn`: Zod schema with content (string), category (optional), tags (optional string array); calls `addLearning()`
+    - `pw-wiki-query`: Zod schema with query (string), wiki_name (optional); calls `searchWikiPages()`
+    - Both tools validate inputs and return structured results
+    - Observable: `pw-learn` persists to database and `pw-wiki-query` retrieves wiki pages
+    - _Requirements: 9.1_
+    - _Boundary: PluginTools_
+  - 2.3 Register custom tools in plugin entry point
+    - Import tool definitions from `tools.ts`
+    - Register with OpenCode's `tool()` helper
+    - Verify TypeScript type compatibility with `@opencode-ai/plugin`
+    - Observable: All three tools are discoverable and invocable when plugin loads
+    - _Requirements: 6.3, 9.1_
+    - _Boundary: PluginModule_
+
+- [ ] 3. Event adapter and script invocation
+  - 3.1 Create payload transformation for 15 mapped events
+    - Map OpenCode event shapes to Claude Code hook input JSON shapes
+    - Handle tool.execute.before/after (PreToolUse/PostToolUse)
+    - Handle session.created/idle (SessionStart/SessionEnd/Stop)
+    - Handle file.edited (FileChanged), session.compacted (PostCompact), permission.asked (PermissionRequest)
+    - Handle todo.updated (TaskCreated/Completed), session.status (SubagentStart/Stop)
+    - Document 7 unmapped events and their adaptation strategies
+    - Observable: Adapter produces valid JSON matching each hook script's stdin expectations
+    - _Requirements: 6.1, 6.4_
+    - _Boundary: EventAdapter_
+  - 3.2 Integrate adapter with existing hook scripts
+    - Invoke scripts from `scripts/` directory via shell execution
+    - Pass adapted JSON payload via stdin
+    - Set environment variables: `CLAUDE_PLUGIN_ROOT`, `CLAUDE_SESSION_ID`, `CLAUDE_PROJECT_DIR`
+    - Capture script output and log via `client.app.log()`
+    - Observable: Running a tool in OpenCode triggers corresponding PreToolUse/PostToolUse script execution
+    - _Requirements: 6.1, 6.2_
+    - _Boundary: EventAdapter_
+
+## Core
+
+- [ ] 4. (P) Build agent frontmatter converter
+  - 4.1 Read and parse all agent markdown files
+    - Parse YAML frontmatter from `agents/*.md`
+    - Extract name, description, tools, model, memory, skills, background, isolation fields
+    - Validate that all 8 expected agents are present
+    - Observable: Parser successfully extracts frontmatter from all 8 agent files without errors
+    - _Requirements: 3.1_
+    - _Boundary: AgentConverter_
+  - 4.2 Convert tools[] array to permission{} object
+    - Map each tool name (Read, Bash, Edit, Write, Glob, Grep) to `allow` in permission object
+    - Tools not listed default to `deny`
+    - Preserve the restriction semantics of the original tools array
+    - Observable: Agent with `tools: ["Read", "Bash"]` produces `permission: { read: allow, bash: allow }`
+    - _Requirements: 3.2_
+    - _Boundary: AgentConverter_
+  - 4.3 Assign mode, hidden flags, and model mapping
+    - Assign `mode: "primary"` to orchestrator, `mode: "subagent"` to all others
+    - Assign `hidden: true` to scout, cost-analyst, permission-analyst
+    - Map `model: "opus"` to `"anthropic/claude-opus-4"`, `model: "sonnet"` to `"anthropic/claude-sonnet-4"`, etc.
+    - Drop deprecated fields (omitClaudeMd, memory, skills, background, isolation)
+    - Observable: Each converted agent has valid OpenCode frontmatter with mode and permission fields
+    - _Requirements: 3.1_
+    - _Boundary: AgentConverter_
+  - 4.4 Write converted agents to output directory
+    - Generate `.opencode/agents/<name>.md` with converted frontmatter
+    - Preserve original agent body content (system prompt) unchanged
+    - Validate output files have valid YAML frontmatter
+    - Observable: All 8 agent files exist in output directory with correct OpenCode format
+    - _Requirements: 3.1_
+    - _Boundary: AgentConverter_
+
+- [ ] 5. (P) Build command frontmatter converter
+  - 5.1 Parse command files and normalize frontmatter
+    - Read all 22 `commands/*.md` files
+    - Extract existing frontmatter where present (description, argument-hint)
+    - For files without frontmatter, parse title/description from markdown body
+    - Observable: Parser handles both frontmatter and no-frontmatter command formats
+    - _Requirements: 4.1_
+    - _Boundary: CommandConverter_
+  - 5.2 Add agent field and write converted commands
+    - Add `agent: "build"` as default for each command
+    - Preserve `description` field; drop `argument-hint`
+    - Write to `.opencode/commands/<name>.md` with new frontmatter + original body
+    - Observable: All 22 command files exist in output directory with agent field present
+    - _Requirements: 4.1, 4.2_
+    - _Boundary: CommandConverter_
+
+- [ ] 6. (P) Build rules merger
+  - 6.1 Parse rule files and extract content
+    - Read all 10 `.mdc` files and 1 `.md` file from `rules/`
+    - Extract `description`, `alwaysApply`, `globs` from frontmatter
+    - Strip frontmatter and collect rule body content
+    - Observable: All 11 rule files are parsed with frontmatter fields correctly extracted
+    - _Requirements: 5.1_
+    - _Boundary: RulesMerger_
+  - 6.2 Merge rules into AGENTS.md sections
+    - Group `alwaysApply: true` rules into a global section
+    - Group `alwaysApply: false` rules by glob pattern into conditional sections
+    - Preserve rule body as markdown content under each section
+    - Write merged content to `.opencode/AGENTS.md`
+    - Observable: Generated AGENTS.md contains all 11 rules organized by applicability
+    - _Requirements: 5.1_
+    - _Boundary: RulesMerger_
+  - 6.3 Document unconvertible rules as comments
+    - Identify rules relying on `.mdc`-specific features (e.g., globs without OpenCode equivalent)
+    - Add markdown comments noting limitations and alternative strategies
+    - Observable: AGENTS.md includes comment blocks explaining any rule conversion gaps
+    - _Requirements: 5.2_
+    - _Boundary: RulesMerger_
+
+- [ ] 7. Setup utility orchestration
+  - 7.1 Implement skills provisioning
+    - Accept `strategy: "copy"` or `strategy: "symlink"` parameter
+    - For each skill directory in `skills/`, create corresponding entry in `.opencode/skills/`
+    - Verify SKILL.md exists in each source directory before provisioning
+    - Observable: Running setup with symlink strategy creates 33 valid symlinks in `.opencode/skills/`
+    - _Requirements: 2.1, 2.2, 2.3_
+    - _Boundary: SetupUtility_
+  - 7.2 Integrate converters into unified setup flow
+    - Import and invoke agent converter, command converter, and rules merger
+    - Generate `.opencode/agents/`, `.opencode/commands/`, `.opencode/AGENTS.md`
+    - Handle errors from individual converters and collect into summary
+    - Observable: Single function call generates all agent, command, and rule files without manual steps
+    - _Requirements: 3.1, 4.1, 5.1_
+    - _Depends: 4.4, 5.2, 6.2_
+    - _Boundary: SetupUtility_
+  - 7.3 Generate config snippet and print summary
+    - Produce JSON snippet for `opencode.json` with plugin array, instructions, and MCP entries
+    - Print setup summary showing counts: skills, agents, commands, rules provisioned
+    - Report any conversion errors with file names and error messages
+    - Observable: After setup, console shows "33 skills, 8 agents, 22 commands, 11 rules provisioned"
+    - _Requirements: 7.1, 10.2_
+    - _Boundary: SetupUtility_
+
+## Integration
+
+- [ ] 8. Configuration templates and documentation
+  - 8.1 (P) Create opencode-config.example.json
+    - Include `plugin: ["pro-workflow"]` entry
+    - Include `instructions` array pointing to generated `.opencode/AGENTS.md`
+    - Include MCP server configuration for SQLite store access
+    - Observable: Example file is valid JSON and matches OpenCode config schema
+    - _Requirements: 7.1_
+    - _Boundary: ConfigTemplates_
+  - 8.2 (P) Create opencode-settings.example.json
+    - Demonstrate OpenCode-specific options (model, provider, permissions)
+    - Include variable substitution examples (`{env:VAR}`, `{file:path}`)
+    - Observable: Settings template compiles as valid JSON
+    - _Requirements: 7.1_
+    - _Boundary: ConfigTemplates_
+  - 8.3 (P) Update README.md with OpenCode support
+    - Add OpenCode to supported agents list alongside Claude Code and Cursor
+    - Add installation and configuration section for OpenCode users
+    - Observable: README mentions OpenCode in the first paragraph and has a dedicated OpenCode setup section
+    - _Requirements: 10.3_
+    - _Boundary: PackageMetadata_
+  - 8.4 (P) Update cross-agent workflow documentation
+    - Add OpenCode as first-class participant in workflow examples
+    - Update compatibility matrices and examples
+    - Observable: docs/cross-agent-workflows.md references OpenCode in all agent comparison tables
+    - _Requirements: 8.2_
+    - _Boundary: Documentation_
+  - 8.5 (P) Create OpenCode integration guide
+    - Document installation via npm, setup command, and opencode.json configuration
+    - Include troubleshooting section for common issues
+    - Observable: docs/opencode-integration.md exists with step-by-step setup instructions
+    - _Requirements: 8.1_
+    - _Boundary: Documentation_
+  - 8.6 (P) Create feature parity matrix
+    - Compare Claude Code, Cursor, and OpenCode support across all features
+    - Document gaps and workarounds for unadaptable hooks and rules
+    - Observable: docs/feature-parity.md contains a table covering all 13 requirement groups
+    - _Requirements: 8.3_
+    - _Boundary: Documentation_
+
+## Validation
+
+- [ ] 9. Unit and integration tests
+  - 9.1 Test agent frontmatter conversion
+    - Verify tools[] → permission{} mapping for all 8 agents
+    - Verify mode and hidden flag assignments
+    - Verify deprecated fields are dropped
+    - Observable: Test suite passes with 100% coverage of conversion logic
+    - _Requirements: 3.1, 3.2_
+    - _Depends: 4.4_
+    - _Boundary: TestSuite_
+  - 9.2 Test command and rules conversion
+    - Verify command agent field addition
+    - Verify rules merge produces correct AGENTS.md structure
+    - Verify unconvertible rules are documented
+    - Observable: Test suite passes for all 22 commands and 11 rules
+    - _Requirements: 4.1, 4.2, 5.1, 5.2_
+    - _Depends: 5.2, 6.2_
+    - _Boundary: TestSuite_
+  - 9.3 Test event adapter payload transformations
+    - Verify each of 15 mapped events produces correct hook input shape
+    - Verify 7 unmapped events are documented
+    - Verify error handling in transformation functions
+    - Observable: Adapter tests cover all 24 Claude Code hook types
+    - _Requirements: 6.1, 6.4_
+    - _Depends: 3.1_
+    - _Boundary: TestSuite_
+  - 9.4 Test custom tool parameter validation
+    - Verify Zod schemas reject invalid inputs with clear error messages
+    - Verify valid inputs execute store methods correctly
+    - Test edge cases: empty query, very long content, special characters
+    - Observable: All three tools have passing validation tests
+    - _Requirements: 9.1, 11.2_
+    - _Depends: 2.1, 2.2_
+    - _Boundary: TestSuite_
+  - 9.5 Integration test for setup utility
+    - Run setup-opencode in a temporary directory
+    - Verify all expected files are created with correct content
+    - Verify source files are never modified
+    - Observable: Temporary directory contains 33 skills, 8 agents, 22 commands, and AGENTS.md
+    - _Requirements: 10.2, 12.1_
+    - _Depends: 7.3_
+    - _Boundary: TestSuite_
+  - 9.6 Integration test for plugin load and tool execution
+    - Load plugin module in a test OpenCode-like environment
+    - Verify event handlers register without errors
+    - Execute custom tools against an in-memory SQLite test database
+    - Observable: Plugin loads successfully and all three custom tools return expected results
+    - _Requirements: 1.1, 9.1, 11.1_
+    - _Depends: 1.2, 2.3_
+    - _Boundary: TestSuite_

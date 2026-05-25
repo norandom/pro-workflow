@@ -8,7 +8,8 @@
     "build": "tsc && node -e \"const fs=require('fs');fs.mkdirSync('dist/db',{recursive:true});fs.copyFileSync('src/db/schema.sql','dist/db/schema.sql')\"",
     "clean": "rm -rf dist",
     "prepublishOnly": "npm run build",
-    "db:init": "node dist/db/index.js"
+    "db:init": "node dist/db/index.js",
+    "setup-opencode": "node dist/scripts/setup-opencode.js"
   },
   "keywords": [
     "claude-code",
@@ -42,7 +43,9 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
-    "better-sqlite3": "^12.6.2"
+    "@opencode-ai/plugin": "^1.15.10",
+    "better-sqlite3": "^12.6.2",
+    "zod": "^3.23.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.12",
@@ -51,6 +54,7 @@
   },
   "files": [
     "dist",
+    "dist/opencode-plugin",
     "scripts",
     "hooks",
     "commands",
