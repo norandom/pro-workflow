@@ -24,7 +24,7 @@
     - _Requirements: 6.1_
 
 - [ ] 2. Custom tools with Zod schemas
-  - 2.1 Implement pw-search tool with FTS5 and embedding support
+  - [x] 2.1 Implement pw-search tool with FTS5 and embedding support
     - Define Zod schema with query (string), category (optional string), limit (optional number, default 10)
     - Connect to SQLite store via `getStore()`
     - Execute `searchLearnings()` for full-text search
