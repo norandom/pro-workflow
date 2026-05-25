@@ -16,7 +16,7 @@
     - Implement lazy initialization of SQLite store connection on first use
     - Observable: Plugin compiles with `tsc` and exports valid `Plugin` type
     - _Requirements: 1.1, 11.1, 12.2_
-  - 1.3 Create event handler stubs for mapped OpenCode events
+  - [x] 1.3 Create event handler stubs for mapped OpenCode events
     - Implement handlers for: tool.execute.before, tool.execute.after, session.created, session.idle, file.edited, session.compacted, permission.asked, todo.updated, shell.env
     - Each handler catches exceptions and logs via `client.app.log()`
     - Handlers never throw to caller (fire-and-forget)
