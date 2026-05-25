@@ -125,6 +125,7 @@ export const EVENT_MAP: Record<string, ScriptMapping> = {
   "experimental.session.compacting": {
     scripts: ["scripts/pre-compact.js"],
   },
+
 };
 
 /**
@@ -148,6 +149,7 @@ export function toHookPayload(
         tool_name: eventPayload.tool,
         tool_input: eventPayload.args ?? {},
         tool_output: eventPayload.output ?? "",
+        assistant_response: eventPayload.output ?? "",
         session_id: eventPayload.sessionID,
         call_id: eventPayload.callID,
       };
